@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 主题变量 ===== */
+:root,
+.theme-light {
+  --reader-bg: #f8f9fa;
+  --reader-surface: #ffffff;
+  --reader-text: #1a1a2e;
+  --reader-accent: #6366f1;
+  --reader-muted: #6b7280;
+  --reader-border: #e5e7eb;
+}
+
+.theme-dark {
+  --reader-bg: #0f0f1a;
+  --reader-surface: #1a1a2e;
+  --reader-text: #d1d5db;
+  --reader-accent: #818cf8;
+  --reader-muted: #9ca3af;
+  --reader-border: #2d2d3f;
+}
+
+.theme-sepia {
+  --reader-bg: #f4ecd8;
+  --reader-surface: #faf3e0;
+  --reader-text: #5b4636;
+  --reader-accent: #b8860b;
+  --reader-muted: #8b7355;
+  --reader-border: #d4c5a0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--reader-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--reader-muted); }
+
+/* EPUB container */
+.epub-container {
+  background: var(--reader-surface) !important;
+  color: var(--reader-text) !important;
+}
+
+@keyframes slideUp {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slideUp { animation: slideUp 0.2s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fadeIn { animation: fadeIn 0.2s ease; }
