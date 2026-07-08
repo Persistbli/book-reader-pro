@@ -1,47 +1,60 @@
 import ePub from 'epubjs'
 
-function parseEpub(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const book = ePub(e.target.result)
-        const metadata = book.packaging.metadata || {}
-        const spine = book.spine || {}
-        const toc = book.navigation || book.toc || []
+async function parseEpub(file) {
+  // 使用 Blob URL 而不是 ArrayBuffer — epub.js 0.3.x 对 Blob URL 支持最稳定
+  const blobUrl = URL.createObjectURL(file)
 
-        const title = metadata.title || file.name.replace('.epub', '')
-        const author = metadata.creator || '未知作者'
+  try {
+    const book = ePub(blobUrl)
+    await book.ready
 
-        let cover = null
-        if (book.cover) {
-          try {
-            cover = await book.coverUrl()
-          } catch (_) { cover = null }
-        }
+    const metadata = book.packaging?.metadata || {}
+    const spine = book.spine || {}
+    const toc = book.navigation || book.toc || []
 
-        resolve({
-          id: crypto.randomUUID(),
-          title,
-          author,
-          format: 'epub',
-          file,
-          fileData: e.target.result,
-          book,
-          cover,
-          spine,
-          toc,
-          chapters: spine.items ? spine.items.map((item, idx) => ({
-            index: idx,
-            id: item.idref || `chapter-${idx}`,
-            title: toc.find(t => t.href?.includes(item.idref))?.label || `第${idx + 1}章`,
-          })) : [],
+    const title = metadata.title || file.name.replace(/\.epub$/i, '')
+    const author = metadata.creator || '未知作者'
+
+    // 获取封面
+    let cover = null
+    try {
+      if (book.cover) cover = await book.coverUrl()
+    } catch (_) { /* ignore */ }
+
+    // 构建章节目录
+    const chapters = []
+    if (spine.items) {
+      spine.items.forEach((item, idx) => {
+        const tocEntry = toc.find(t => t.href?.includes(item.idref))
+        chapters.push({
+          index: idx,
+          id: item.idref || `chapter-${idx}`,
+          title: tocEntry?.label || `第${idx + 1}章`,
         })
-      } catch (err) { reject(err) }
+      })
     }
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
-  })
+
+    // 保存 ArrayBuffer 用于持久化（如果以后需要）
+    const arrayBuffer = await file.arrayBuffer()
+
+    return {
+      id: crypto.randomUUID(),
+      title,
+      author,
+      format: 'epub',
+      blobUrl,
+      file,
+      fileData: arrayBuffer,
+      book,
+      cover,
+      spine,
+      toc,
+      chapters,
+    }
+  } catch (err) {
+    URL.revokeObjectURL(blobUrl)
+    throw new Error(`EPUB 解析失败: ${err.message}`)
+  }
 }
 
 export const epubParser = {

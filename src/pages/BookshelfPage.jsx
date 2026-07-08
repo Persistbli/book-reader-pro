@@ -1,13 +1,14 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useBookshelfStore } from '../stores/bookshelfStore.js'
 import { useReaderStore } from '../stores/readerStore.js'
 import BookCard from '../components/Bookshelf/BookCard.jsx'
 import DropZone from '../components/common/DropZone.jsx'
 
 export default function BookshelfPage() {
-  const { books, loading, restore, addFiles, removeBook } = useBookshelfStore()
+  const { books, loading, errors, restore, addFiles, removeBook, clearError } = useBookshelfStore()
   const setBook = useReaderStore(s => s.setBook)
   const fileInput = useRef(null)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { restore() }, [])
 
@@ -16,7 +17,23 @@ export default function BookshelfPage() {
       const ext = f.name.split('.').pop().toLowerCase()
       return ['epub', 'pdf', 'txt', 'md', 'markdown', 'cbz', 'html', 'htm'].includes(ext)
     })
-    if (supported.length > 0) await addFiles(supported)
+
+    if (supported.length === 0) {
+      // 全部不支持
+      files.forEach(f => {
+        useBookshelfStore.setState(s => ({
+          errors: { ...s.errors, [f.name]: '不支持的格式' }
+        }))
+      })
+      return
+    }
+
+    setImporting(true)
+    try {
+      await addFiles(supported)
+    } finally {
+      setImporting(false)
+    }
   }, [addFiles])
 
   const handleOpen = (book) => {
@@ -36,13 +53,19 @@ export default function BookshelfPage() {
           </div>
           <button
             onClick={() => fileInput.current?.click()}
+            disabled={importing}
             className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl
-              font-medium text-sm transition-colors shadow-sm hover:shadow-md flex items-center gap-2"
+              font-medium text-sm transition-colors shadow-sm hover:shadow-md flex items-center gap-2
+              disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            导入书籍
+            {importing ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            )}
+            {importing ? '导入中...' : '导入书籍'}
           </button>
           <input
             ref={fileInput}
@@ -57,6 +80,33 @@ export default function BookshelfPage() {
           />
         </div>
 
+        {/* Import errors */}
+        {Object.keys(errors).length > 0 && (
+          <div className="mb-6 space-y-2">
+            {Object.entries(errors).map(([name, msg]) => (
+              <div key={name}
+                className="flex items-center justify-between px-4 py-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-red-700 dark:text-red-300 truncate">{name}</span>
+                  <span className="text-red-500 dark:text-red-400 flex-shrink-0">— {msg}</span>
+                </div>
+                <button
+                  onClick={() => clearError(name)}
+                  className="ml-2 p-1 rounded hover:bg-red-200 dark:hover:bg-red-800/50 text-red-400 flex-shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
@@ -65,7 +115,7 @@ export default function BookshelfPage() {
         )}
 
         {/* Empty state */}
-        {!loading && books.length === 0 && (
+        {!loading && books.length === 0 && Object.keys(errors).length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <svg className="w-24 h-24 text-gray-300 dark:text-gray-600 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
