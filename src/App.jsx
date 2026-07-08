@@ -12,7 +12,7 @@ export default function App() {
   useEffect(() => {
     dbGet('settings', 'theme').then(rec => {
       const theme = rec?.value || 'light'
-      document.documentElement.className = `theme-${theme}`
+      document.documentElement.className = theme === 'dark' ? 'dark theme-dark' : `theme-${theme}`
       setTheme(theme)
     }).catch(() => {
       document.documentElement.className = 'theme-light'

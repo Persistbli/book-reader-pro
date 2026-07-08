@@ -31,7 +31,7 @@ export const useReaderStore = create((set, get) => ({
   },
 
   setTheme(theme) {
-    document.documentElement.className = `theme-${theme}`
+    document.documentElement.className = theme === 'dark' ? 'dark theme-dark' : `theme-${theme}`
     set({ theme })
     dbSave('settings', { key: 'theme', value: theme })
   },
